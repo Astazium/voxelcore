@@ -37,10 +37,12 @@ private:
     uint ssaoFbo = 0;
     uint ssaoBuffer = 0;
 
-    void createColorBuffer();
-    void createPositionsBuffer();
-    void createNormalsBuffer();
-    void createEmissionBuffer();
+    void GBuffer::createBuffer(
+        uint& buffer,
+        int internalformat,
+        uint format,
+        uint type,
+        uint attachment
+    );
     void createDepthBuffer();
-    void createSSAOBuffer();
 };
