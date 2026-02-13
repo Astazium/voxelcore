@@ -18,6 +18,8 @@ struct AudioSettings {
     NumberSetting volumeMusic {1.0f, 0.0f, 1.0f, setting_format::percent};
 
     StringSetting inputDevice {"auto"};
+
+    FlagSetting acousticEffects {true};
 };
 
 struct DisplaySettings {
@@ -79,6 +81,8 @@ struct GraphicsSettings {
     IntegerSetting chunkMaxVerticesDense {800'000, 0, 8'000'000};
     /// @brief Limit of chunk renderers count
     IntegerSetting chunkMaxRenderers {6, -4, 32};
+    /// @brief Particles renderer vertices buffer capacity
+    IntegerSetting particlesBatchVertices {4'096, 0, 1'000'000};
     /// @brief Advanced render pipeline
     FlagSetting advancedRender {true};
     /// @brief Screen space ambient occlusion quality
@@ -89,6 +93,8 @@ struct GraphicsSettings {
     IntegerSetting denseRenderDistance {56, 0, 10'000};
     /// @brief Soft lighting for blocks
     FlagSetting softLighting {true};
+    /// @brief Clouds quality level
+    IntegerSetting cloudsQuality {2, 0, 2};
 };
 
 struct PathfindingSettings {
@@ -115,6 +121,10 @@ struct UiSettings {
 struct NetworkSettings {
 };
 
+struct SystemSettings {
+    IntegerSetting maxBgAssetLoaders {3, -4, 16};
+};
+
 struct EngineSettings {
     AudioSettings audio;
     DisplaySettings display;
@@ -125,4 +135,5 @@ struct EngineSettings {
     UiSettings ui;
     NetworkSettings network;
     PathfindingSettings pathfinding;
+    SystemSettings system;
 };

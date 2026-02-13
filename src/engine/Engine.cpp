@@ -4,47 +4,46 @@
 #define GLEW_STATIC
 #endif
 
-#include "debug/Logger.hpp"
-#include "assets/AssetsLoader.hpp"
+#include "AssetsManagement.hpp"
 #include "audio/audio.hpp"
+#include "coders/commons.hpp"
 #include "coders/GLSLExtension.hpp"
 #include "coders/toml.hpp"
-#include "coders/commons.hpp"
-#include "devtools/Editor.hpp"
-#include "devtools/Project.hpp"
-#include "devtools/DebuggingServer.hpp"
 #include "content/ContentControl.hpp"
 #include "core_defs.hpp"
-#include "io/io.hpp"
-#include "io/settings_io.hpp"
+#include "debug/Logger.hpp"
+#include "devtools/DebuggingServer.hpp"
+#include "devtools/Editor.hpp"
+#include "devtools/Project.hpp"
+#include "devtools/stdin_cmd_reader.hpp"
+#include "EnginePaths.hpp"
 #include "frontend/locale.hpp"
 #include "frontend/menu.hpp"
 #include "frontend/screens/Screen.hpp"
-#include "graphics/render/ModelsGenerator.hpp"
 #include "graphics/core/DrawContext.hpp"
 #include "graphics/core/Shader.hpp"
-#include "graphics/ui/GUI.hpp"
 #include "graphics/ui/elements/Menu.hpp"
-#include "logic/EngineController.hpp"
+#include "graphics/ui/GUI.hpp"
+#include "io/io.hpp"
+#include "io/settings_io.hpp"
 #include "logic/CommandsInterpreter.hpp"
-#include "logic/scripting/scripting.hpp"
+#include "logic/EngineController.hpp"
 #include "logic/scripting/scripting_hud.hpp"
+#include "logic/scripting/scripting.hpp"
+#include "Mainloop.hpp"
 #include "network/Network.hpp"
+#include "ServerMainloop.hpp"
 #include "util/platform.hpp"
+#include "util/stringutil.hpp"
 #include "window/input.hpp"
 #include "window/Window.hpp"
-#include "world/Level.hpp"
-#include "Mainloop.hpp"
-#include "ServerMainloop.hpp"
 #include "WindowControl.hpp"
-#include "EnginePaths.hpp"
+#include "world/Level.hpp"
 
-#include <iostream>
 #include <assert.h>
 #include <glm/glm.hpp>
 #include <unordered_set>
 #include <functional>
-#include <utility>
 
 static debug::Logger logger("engine");
 
@@ -84,6 +83,7 @@ void Engine::onContentLoad() {
 }
 
 void Engine::initializeClient() {
+    assets = std::make_unique<AssetsManagement>(*this);
     windowControl = std::make_unique<WindowControl>(*this);
     auto [window, input] = windowControl->initialize();
 
@@ -192,6 +192,9 @@ void Engine::initialize(CoreParameters coreParameters) {
     if (!params.headless) {
         project->loadProjectClientScript();
     }
+    if (params.stdinCommands) {
+        cmd::start_stdin_cmd_reader(*this);
+    }
 }
 
 void Engine::loadSettings() {
@@ -264,6 +267,7 @@ void Engine::applicationTick() {
 
 void Engine::updateFrontend() {
     double delta = time.getDelta();
+    assets->update();
     updateHotkeys();
     audio::update(delta);
     gui->act(delta, window->getSize());
@@ -302,10 +306,13 @@ void Engine::startPauseLoop() {
 }
 
 void Engine::renderFrame() {
+    if (input->isCursorLocked() != (gui->getActiveFrame() == nullptr)) {
+        input->toggleCursor();
+    }
     screen->draw(time.getDelta());
 
     DrawContext ctx(nullptr, *window, nullptr);
-    gui->draw(ctx, *assets);
+    gui->draw(ctx, *assets->getStorage());
 }
 
 void Engine::saveSettings() {
@@ -363,33 +370,7 @@ void Engine::setLevelConsumer(OnWorldOpen levelConsumer) {
 }
 
 void Engine::loadAssets() {
-    logger.info() << "loading assets";
-    Shader::preprocessor->setPaths(&paths->resPaths);
-
-    auto content = this->content->get();
-
-    auto new_assets = std::make_unique<Assets>();
-    AssetsLoader loader(*this, *new_assets, paths->resPaths);
-    AssetsLoader::addDefaults(loader, content);
-
-    // no need
-    // correct log messages order is more useful
-    // todo: before setting to true, check if GLSLExtension thread safe
-    bool threading = false; // look at three upper lines
-    if (threading) {
-        auto task = loader.startTask([=](){});
-        task->waitForEnd();
-    } else {
-        while (loader.hasNext()) {
-            loader.loadNext();
-        }
-    }
-    assets = std::move(new_assets);
-    if (content) {
-        ModelsGenerator::prepare(*content, *assets);
-    }
-    assets->setup();
-    gui->onAssetsLoad(assets.get());
+    assets->loadAssets(content->get());
 }
 
 void Engine::loadProject() {
@@ -442,7 +423,21 @@ EngineSettings& Engine::getSettings() {
 }
 
 Assets* Engine::getAssets() {
-    return assets.get();
+    return assets ? assets->getStorage() : nullptr;
+}
+
+Assets& Engine::requireAssets() {
+    if (isHeadless()) {
+        throw std::runtime_error("assets are not available in headless mode");
+    }
+    return *assets->getStorage();
+}
+
+AssetsLoader& Engine::acquireBackgroundLoader() {
+    if (isHeadless()) {
+        throw std::runtime_error("assets are not available in headless mode");
+    }
+    return assets->acquireBackgroundLoader();
 }
 
 EnginePaths& Engine::getPaths() {

@@ -632,8 +632,10 @@ static std::shared_ptr<UINode> read_image(
     const UiXmlReader& reader, const xml::xmlelement& element
 ) {
     std::string src = element.attr("src", "").getText();
-    auto image = std::make_shared<Image>(reader.getGUI(), src);
+    std::string fallback = element.attr("fallback", "").getText();
+    auto image = std::make_shared<Image>(reader.getGUI(), std::move(src));
     read_uinode(reader, element, *image);
+    image->setFallback(std::move(fallback));
 
     if (element.has("region")) {
         auto vec = element.attr("region").asVec4();
@@ -650,7 +652,7 @@ static std::shared_ptr<UINode> read_canvas(
         size = element.attr("size").asVec2();
     }
     auto image =
-        std::make_shared<Canvas>(reader.getGUI(), ImageFormat::rgba8888, size);
+        std::make_shared<Canvas>(reader.getGUI(), ImageFormat::RGBA8888, size);
     read_uinode(reader, element, *image);
     return image;
 }

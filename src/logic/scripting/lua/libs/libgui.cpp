@@ -16,6 +16,7 @@
 #include "graphics/ui/elements/TrackBar.hpp"
 #include "graphics/ui/elements/InlineFrame.hpp"
 #include "graphics/ui/elements/ModelViewer.hpp"
+#include "graphics/ui/elements/Frame.hpp"
 #include "graphics/ui/gui_util.hpp"
 #include "graphics/ui/markdown.hpp"
 #include "graphics/core/Font.hpp"
@@ -32,7 +33,7 @@ using namespace scripting;
 static DocumentNode get_document_node_impl(
     lua::State*, const std::string& name, const std::string& nodeName, bool throwable=true
 ) {
-    auto doc = engine->getAssets()->get<UiDocument>(name);
+    auto doc = engine->requireAssets().get<UiDocument>(name);
     if (doc == nullptr) {
         if (throwable) {
             throw std::runtime_error("document '" + name + "' not found");
@@ -397,6 +398,13 @@ static int p_get_src(UINode* node, lua::State* L) {
     return 0;
 }
 
+static int p_get_fallback(UINode* node, lua::State* L) {
+    if (auto image = dynamic_cast<Image*>(node)) {
+        return lua::pushstring(L, image->getFallback());
+    }
+    return 0;
+}
+
 static int p_get_region(UINode* node, lua::State* L) {
     if (auto image = dynamic_cast<Image*>(node)) {
         const auto& region = image->getRegion();
@@ -663,6 +671,7 @@ static int l_gui_getattr(lua::State* L) {
             {"syntax", p_get_syntax},
             {"markup", p_get_markup},
             {"src", p_get_src},
+            {"fallback", p_get_fallback},
             {"value", p_get_value},
             {"min", p_get_min},
             {"max", p_get_max},
@@ -788,6 +797,11 @@ static void p_set_src(UINode* node, lua::State* L, int idx) {
         iframe->setSrc(lua::require_string(L, idx));
     } else if (auto modelviewer = dynamic_cast<ModelViewer*>(node)) {
         modelviewer->setModel(lua::require_string(L, idx));
+    }
+}
+static void p_set_fallback(UINode* node, lua::State* L, int idx) {
+    if (auto image = dynamic_cast<Image*>(node)) {
+        image->setFallback(lua::require_string(L, idx));
     }
 }
 static void p_set_region(UINode* node, lua::State* L, int idx) {
@@ -962,6 +976,7 @@ static int l_gui_setattr(lua::State* L) {
             {"syntax", p_set_syntax},
             {"markup", p_set_markup},
             {"src", p_set_src},
+            {"fallback", p_set_fallback},
             {"caret", p_set_caret},
             {"value", p_set_value},
             {"min", p_set_min},
@@ -1012,7 +1027,7 @@ static int l_gui_str(lua::State* L) {
 
 static int l_gui_reindex(lua::State* L) {
     auto name = lua::require_string(L, 1);
-    auto doc = engine->getAssets()->get<UiDocument>(name);
+    auto doc = engine->requireAssets().get<UiDocument>(name);
     if (doc == nullptr) {
         throw std::runtime_error(
             "document '" + std::string(name) + "' not found"
@@ -1110,7 +1125,7 @@ static int l_gui_load_document(lua::State* L) {
         engine->getGUI(), std::move(env), alias, filename, filename.string()
     );
     auto document = documentPtr.get();
-    engine->getAssets()->store(std::move(documentPtr), alias);
+    engine->requireAssets().store(std::move(documentPtr), alias);
 
     // namespace extension
     if (lua::istable(L, 4)) {
@@ -1135,6 +1150,62 @@ static int l_set_syntax_styles(lua::State* L) {
     return 0;
 }
 
+static int l_create_frame(lua::State* L) {
+    if (engine->isHeadless()) {
+        return 0;
+    }
+    std::string id = lua::require_string(L, 1);
+    std::string outputTexture = lua::require_string(L, 2);
+    auto size = lua::tovec2(L, 3);
+
+    auto& gui = engine->getGUI();
+    auto frame = std::make_shared<gui::Frame>(gui, id, outputTexture);
+    frame->setSize(std::move(size));
+    auto& assets = *engine->getAssets();
+    auto document = std::make_shared<UiDocument>(
+        id, UiDocScript {}, frame, nullptr
+    );
+    assets.store(document, id);
+    gui.addFrame(std::move(frame));
+    return 0;
+}
+
+static int l_set_active_frame(lua::State* L) {
+    if (engine->isHeadless()) {
+        return 0;
+    }
+    std::string id = lua::require_string(L, 1);
+    vec2supplier cursorLocator = nullptr;
+    if (lua::isfunction(L, 2)) {
+        auto lambda = lua::create_lambda(L);
+        cursorLocator = [lambda]() -> glm::vec2 {
+            auto table = lambda({});
+            if (!table.isList()) {
+                throw std::runtime_error("invalid value returned from locator");
+            }
+            glm::vec2 pos {};
+            table.at(0).get(pos.x);
+            table.at(1).get(pos.y);
+            return pos;
+        };
+    }
+    auto& gui = engine->getGUI();
+    gui.setActiveFrame(id, std::move(cursorLocator));
+    return 0;
+}
+
+static int l_get_active_frame(lua::State* L) {
+    if (engine->isHeadless()) {
+        return 0;
+    }
+    auto& gui = engine->getGUI();
+    auto frame = gui.getActiveFrame();
+    if (frame == nullptr) {
+        return 0;
+    }
+    return lua::pushstring(L, frame->getId());
+}
+
 const luaL_Reg guilib[] = {
     {"get_viewport", lua::wrap<l_gui_getviewport>},
     {"getattr", lua::wrap<l_gui_getattr>},
@@ -1148,6 +1219,9 @@ const luaL_Reg guilib[] = {
     {"alert", lua::wrap<l_gui_alert>},
     {"load_document", lua::wrap<l_gui_load_document>},
     {"set_syntax_styles", lua::wrap<l_set_syntax_styles>},
+    {"create_frame", lua::wrap<l_create_frame>},
+    {"set_active_frame", lua::wrap<l_set_active_frame>},
+    {"get_active_frame", lua::wrap<l_get_active_frame>},
     {"__reindex", lua::wrap<l_gui_reindex>},
     {nullptr, nullptr}
 };

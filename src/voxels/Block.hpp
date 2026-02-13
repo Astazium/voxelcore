@@ -54,6 +54,11 @@ struct BlockFuncsSet {
     bool onblockremoved : 1;
 };
 
+struct BlockFuncNamesCache {
+    std::string update;
+    std::string randomUpdate;
+};
+
 struct CoordSystem {
     std::array<glm::ivec3, 3> axes;
     /// @brief Grid 3d position fix offset (for negative vectors)
@@ -123,7 +128,7 @@ VC_ENUM_METADATA(BlockModelType)
     {"custom", BlockModelType::CUSTOM},
 VC_ENUM_END
 
-enum class CullingMode {
+enum class CullingMode : uint8_t {
     DEFAULT,
     OPTIONAL,
     DISABLED,
@@ -142,6 +147,7 @@ struct BlockMaterial : Serializable {
     std::string placeSound;
     std::string breakSound;
     std::string hitSound;
+    float soundAbsorption = 0.5f;
 
     dv::value toTable() const; // for compatibility
     dv::value serialize() const override;
@@ -296,6 +302,8 @@ public:
         blockid_t surfaceReplacement = 0;
 
         std::set<int> tags;
+
+        BlockFuncNamesCache eventNames;
     } rt {};
 
     Block(const std::string& name);
