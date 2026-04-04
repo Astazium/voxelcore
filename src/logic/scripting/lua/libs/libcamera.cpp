@@ -5,6 +5,17 @@
 #include "world/Level.hpp"
 #include "api_lua.hpp"
 
+#include "frontend/hud.hpp"
+#include "graphics/render/WorldRenderer.hpp"
+#include "graphics/core/PostProcessing.hpp"
+#include "graphics/core/DrawContext.hpp"
+#include "graphics/core/ImageData.hpp"
+#include "window/Window.hpp"
+#include "engine/Engine.hpp"
+#include "coders/imageio.hpp"
+#include "io/path.hpp"
+#include "../../scripting_hud.hpp"
+
 using namespace scripting;
 
 static Level& require_level() {
@@ -120,6 +131,35 @@ static int l_look_at(lua::State* L) {
     return 0;
 }
 
+static int l_take_screenshot(lua::State* L) {
+    if (lua::isstring(L, 5) && lua::require_lstring(L, 5) != "png")
+        throw std::runtime_error("unsupportd image format");
+    auto& camera = *require_level().cameras.at(lua::tointeger(L, 1));
+    const bool useTable = lua::toboolean(L, 2);
+    const bool hudVisible = lua::toboolean(L, 3);
+    DrawContext ctx(nullptr, engine->getWindow(), nullptr);
+    try {
+        const glm::uvec2 resolution = lua::tovec2(L, 4);
+        ctx.setViewport(resolution);
+    } catch (...) {
+    }
+    renderer->renderFrame(ctx, camera, hudVisible, *post_processing);
+    const auto image = post_processing->toImage();
+    !camera.flipped ? image->flipY() : (void)0;
+    const auto data = imageio::encode(imageio::ImageFileFormat::PNG, *image.get());
+    if (useTable)
+    {
+        lua::createtable(L, data.size(), 0);
+        for (size_t i = 0; i < data.size(); ++i) {
+            lua::pushinteger(L, data[i]);
+            lua::rawseti(L, i + 1);
+        }
+        return 1;
+    } else {
+        return lua::create_bytearray(L, data.data(), data.size());
+    }
+}
+
 const luaL_Reg cameralib[] = {
     {"index", lua::wrap<l_index>},
     {"name", lua::wrap<l_name>},
@@ -139,5 +179,6 @@ const luaL_Reg cameralib[] = {
     {"get_right", lua::wrap<l_camera_getter<getter_right>>},
     {"get_up", lua::wrap<l_camera_getter<getter_up>>},
     {"look_at", lua::wrap<l_look_at>},
+    {"take_screenshot", lua::wrap<l_take_screenshot>},
     {nullptr, nullptr}
 };
