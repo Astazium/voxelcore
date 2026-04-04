@@ -66,6 +66,18 @@ cam:look_at(point: vec3)
 
 -- направляет камеру на заданную точку с фактором интерполяции
 cam:look_at(point: vec3, t: number)
+
+-- рендерит сцену с позиции и настройками камеры в указанный формат и возвращает итоговое изображение
+cam:take_screenshot(
+                    -- вернуть массив байт вместо Bytearray 
+                    [опционально] usetable:   boolean = false
+                    -- рендерить худ
+                    [опционально] hudvisible: boolean = false
+                    -- формат изображения (поддерживается только png)
+                    [опционально] format:     string = "png"
+                    -- разрешение изображения (используется размер окна если не указано)
+                    [опционально] resolution: {number, number}
+) -> Bytearray | table<number>
 ```
 
 Переключение камеры возможно через функцию [player.set_camera](libplayer.md#камеры).
