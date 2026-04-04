@@ -76,7 +76,7 @@ cam:take_screenshot(
                     -- формат изображения (поддерживается только png)
                     [опционально] format:     string = "png"
                     -- разрешение изображения (используется размер окна если не указано)
-                    [опционально] resolution: {number, number}
+                    [опционально] resolution: {int, int}
 ) -> Bytearray | table<number>
 ```
 
