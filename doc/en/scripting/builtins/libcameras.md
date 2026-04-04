@@ -66,6 +66,18 @@ cam:look_at(point:vec3)
 
 -- makes camera look to a given point with given interpolation factor
 cam:look_at(point: vec3, t: number)
+
+-- renders a scene from camera's perspective and settings in the specified image format and returns the final image
+cam:take_screenshot(
+                    -- return bytes array instead of Bytearray
+                    [опционально] usetable:   boolean = false
+                    -- render hud
+                    [опционально] hudvisible: boolean = false
+                    -- image format (only png is supported)
+                    [опционально] format:     string = "png"
+                    -- image resolution (window size is used if not specified)
+                    [опционально] resolution: {int, int}
+) -> Bytearray | table<number>
 ```
 
 Use player.set_camera to switch cameras.
