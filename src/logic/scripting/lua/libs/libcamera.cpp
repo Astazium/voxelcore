@@ -132,14 +132,14 @@ static int l_look_at(lua::State* L) {
 }
 
 static int l_take_screenshot(lua::State* L) {
-    if (lua::isstring(L, 5) && lua::require_lstring(L, 5) != "png")
+    if (lua::isstring(L, 5) && lua::require_lstring(L, 4) != "png")
         throw std::runtime_error("unsupportd image format");
     auto& camera = *require_level().cameras.at(lua::tointeger(L, 1));
     const bool useTable = lua::toboolean(L, 2);
     const bool hudVisible = lua::toboolean(L, 3);
     DrawContext ctx(nullptr, engine->getWindow(), nullptr);
     try {
-        const glm::uvec2 resolution = lua::tovec2(L, 4);
+        const glm::uvec2 resolution = lua::tovec2(L, 5);
         ctx.setViewport(resolution);
     } catch (...) {
     }
