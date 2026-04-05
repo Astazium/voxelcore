@@ -13,7 +13,6 @@
 #include "window/Window.hpp"
 #include "engine/Engine.hpp"
 #include "coders/imageio.hpp"
-#include "io/path.hpp"
 #include "../../scripting_hud.hpp"
 
 using namespace scripting;
@@ -132,7 +131,7 @@ static int l_look_at(lua::State* L) {
 }
 
 static int l_take_screenshot(lua::State* L) {
-    if (lua::isstring(L, 5) && lua::require_lstring(L, 4) != "png")
+    if (lua::isstring(L, 4) && lua::require_lstring(L, 4) != "png")
         throw std::runtime_error("unsupportd image format");
     auto& camera = *require_level().cameras.at(lua::tointeger(L, 1));
     const bool useTable = lua::toboolean(L, 2);
@@ -145,7 +144,8 @@ static int l_take_screenshot(lua::State* L) {
     }
     renderer->renderFrame(ctx, camera, hudVisible, *post_processing);
     const auto image = post_processing->toImage();
-    !camera.flipped ? image->flipY() : (void)0;
+    if (!camera.flipped) 
+        image->flipY();
     const auto data = imageio::encode(imageio::ImageFileFormat::PNG, *image.get());
     if (useTable)
     {
