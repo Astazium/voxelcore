@@ -54,8 +54,8 @@ GBuffer::GBuffer(uint width, uint height)
       positionsBuffer   {0, GL_RGBA16F, GL_RGBA, GL_FLOAT,         GL_COLOR_ATTACHMENT1},
       normalsBuffer     {0, GL_RGBA16F, GL_RGB,  GL_FLOAT,         GL_COLOR_ATTACHMENT2},
       emissionBuffer    {0, GL_R8,      GL_RED,  GL_FLOAT,         GL_COLOR_ATTACHMENT3},
-      ssaoBuffer        {0, GL_R16F,    GL_RED,  GL_FLOAT,         0},
-      depthBuffer       {0, 0,          0,       0,                0}
+      depthBuffer       {0, 0,          0,       0,                0},
+      ssaoBuffer        {0, GL_R16F,    GL_RED,  GL_FLOAT,         0}
 {
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
