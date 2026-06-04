@@ -63,7 +63,7 @@ static int l_spawn(lua::State* L) {
     auto level = controller->getLevel();
     auto defname = lua::tostring(L, 1);
     if (defname == nullptr) {
-        throw std::runtime_error("invalid string");
+        throw std::runtime_error("string is nil");
     }
     auto& def = content->entities.require(defname);
     auto pos = lua::tovec3(L, 2);
