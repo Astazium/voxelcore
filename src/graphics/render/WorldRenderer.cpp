@@ -275,7 +275,8 @@ void WorldRenderer::renderLines(
         auto ctx = pctx.sub(lineBatch.get());
         bool culling = engine.getSettings().graphics.frustumCulling.get();
         level.entities->renderDebug(
-            *lineBatch, culling ? frustumCulling.get() : nullptr, ctx
+            *lineBatch, culling ? frustumCulling.get() : nullptr, ctx,
+            player.currentCamera.get() == player.fpCamera.get() ? player.getEntity() : 0
         );
     }
 }
